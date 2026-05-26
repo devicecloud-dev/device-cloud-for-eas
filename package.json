@@ -1,0 +1,31 @@
+{
+  "name": "@devicecloud.dev/eas-workflow",
+  "description": "Run Maestro tests on devicecloud.dev from EAS Workflows",
+  "author": "devicecloud.dev",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "bin": {
+    "eas-workflow": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "ncc build src/index.ts -o dist --minify"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "@vercel/ncc": "^0.38.4",
+    "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "undici": ">=7.24.4"
+    }
+  },
+  "packageManager": "pnpm@10.29.3"
+}
