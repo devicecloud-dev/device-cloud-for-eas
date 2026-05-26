@@ -1,0 +1,64 @@
+name: Publish to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      dist_tag:
+        description: 'npm dist-tag to publish under'
+        required: true
+        default: 'latest'
+        type: choice
+        options:
+          - latest
+          - next
+          - beta
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Resolve version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Publishing version ${VERSION} under dist-tag '${{ inputs.dist_tag }}'"
+
+      - name: Publish to npm
+        run: pnpm publish --tag ${{ inputs.dist_tag }} --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create and push git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag_name }}" -m "Release ${{ steps.version.outputs.version }}"
+          git push origin "${{ steps.version.outputs.tag_name }}"
