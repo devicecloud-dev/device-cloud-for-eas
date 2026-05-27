@@ -2,7 +2,7 @@
   "name": "@devicecloud.dev/eas-workflow",
   "description": "Run Maestro tests on devicecloud.dev from EAS Workflows",
   "author": "devicecloud.dev",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "main": "dist/index.js",
   "bin": {
     "eas-workflow": "dist/index.js"

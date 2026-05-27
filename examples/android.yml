@@ -14,16 +14,17 @@ jobs:
     needs: [build_android]
     runs_on: linux-medium
     env:
-      EAS_BUILD_ID: ${{ needs.build_android.outputs.build_id }}
-      EAS_BUILD_PLATFORM: ${{ needs.build_android.outputs.platform }}
-      EAS_APP_VERSION: ${{ needs.build_android.outputs.app_version }}
-      EAS_GH_SHA: ${{ github.sha }}
-      EAS_GH_BRANCH: ${{ github.ref_name }}
+      DCD_EAS_BUILD_ID: ${{ needs.build_android.outputs.build_id }}
+      DCD_EAS_PLATFORM: ${{ needs.build_android.outputs.platform }}
+      DCD_EAS_APP_VERSION: ${{ needs.build_android.outputs.app_version }}
+      DCD_GH_SHA: ${{ github.sha }}
+      DCD_GH_BRANCH: ${{ github.ref_name }}
     outputs:
       console_url: ${{ steps.dcd.outputs.console_url }}
       status: ${{ steps.dcd.outputs.upload_status }}
       flow_results: ${{ steps.dcd.outputs.flow_results }}
     steps:
+      - uses: eas/checkout
       - id: download
         uses: eas/download_build
         with:

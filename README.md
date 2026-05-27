@@ -16,6 +16,7 @@ jobs:
     needs: [build_android]
     runs_on: linux-medium
     steps:
+      - uses: eas/checkout
       - id: download
         uses: eas/download_build
         with:
@@ -26,6 +27,8 @@ jobs:
             --app-file ${{ steps.download.outputs.artifact_path }} \
             --flows ./.maestro
 ```
+
+> **Don't** name your env-block keys `EAS_BUILD_ID` or anything starting with `EAS_BUILD_*` — that namespace is reserved by EAS Build workers, and clobbering `EAS_BUILD_ID` will cause your custom job to fail silently after `PREPARE_PROJECT` with no error message. Use the wrapper's `DCD_EAS_*` env-var contract instead (see [examples/](./examples/)).
 
 Before running, store your DeviceCloud API key as an EAS project secret named `DEVICE_CLOUD_API_KEY`:
 
