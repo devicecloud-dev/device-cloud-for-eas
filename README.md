@@ -23,7 +23,7 @@ jobs:
           build_id: ${{ needs.build_android.outputs.build_id }}
       - id: dcd
         run: |
-          npx --yes @devicecloud.dev/eas-workflow@next \
+          npx --yes @devicecloud.dev/eas-workflow@v1 \
             --app-file ${{ steps.download.outputs.artifact_path }} \
             --flows ./.maestro
 ```
@@ -69,7 +69,7 @@ e2e:
       with:
         build_id: ${{ needs.build.outputs.build_id }}
     - run: |
-        npx --yes @devicecloud.dev/eas-workflow@next \
+        npx --yes @devicecloud.dev/eas-workflow@v1 \
           --app-file ${{ steps.download.outputs.artifact_path }} \
           --flows ./.maestro
 ```
