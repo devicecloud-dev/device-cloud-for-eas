@@ -6,44 +6,67 @@ Run your Maestro flows on [devicecloud.dev](https://devicecloud.dev) from [EAS W
 
 ```yaml
 jobs:
+  build_android:
+    type: build
+    params:
+      platform: android
+      profile: preview
+
   e2e:
-    after: [build_android]
+    needs: [build_android]
     runs_on: linux-medium
     steps:
+      - id: download
+        uses: eas/download_build
+        with:
+          build_id: ${{ needs.build_android.outputs.build_id }}
       - id: dcd
-        run: npx --yes @devicecloud.dev/eas-workflow@v0 --flows ./.maestro
-        env:
-          DEVICE_CLOUD_API_KEY: ${{ secrets.DEVICE_CLOUD_API_KEY }}
-          EAS_BUILD_URL: ${{ after.build_android.outputs.build_url }}
+        run: |
+          npx --yes @devicecloud.dev/eas-workflow@next \
+            --app-file ${{ steps.download.outputs.artifact_path }} \
+            --flows ./.maestro
 ```
+
+Before running, store your DeviceCloud API key as an EAS project secret named `DEVICE_CLOUD_API_KEY`:
+
+```bash
+eas env:create --scope project --environment production --environment preview --environment development \
+  --name DEVICE_CLOUD_API_KEY --visibility secret --type string --value <your-api-key>
+```
+
+EAS automatically injects project-scoped secrets into every step as process environment variables — **don't** reference them via `${{ secrets.X }}` in YAML (that syntax isn't supported by EAS Workflows).
 
 ## Documentation
 
-Full documentation including all environment variables, CLI flags, outputs, and usage examples is available at:
+Full documentation including all environment variables, CLI flags, outputs, and migration notes:
 
 **[docs.devicecloud.dev/ci-cd/eas-workflows](https://docs.devicecloud.dev/ci-cd/eas-workflows)**
 
 ## Migrating from `maestro-cloud`
 
-Replace the whole job — EAS's `maestro-cloud` is closed-source and hardcoded to Maestro Cloud:
+Replace the whole job — EAS's built-in `maestro-cloud` is hardcoded to Maestro Cloud:
 
 ```yaml
 # Before
 e2e:
   type: maestro-cloud
   params:
-    build_id: ${{ after.build.outputs.build_id }}
+    build_id: ${{ needs.build.outputs.build_id }}
     maestro_project_id: proj_xxx
     flows: ./.maestro
     maestro_api_key: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
 
 # After
 e2e:
-  after: [build]
+  needs: [build]
   runs_on: linux-medium
   steps:
-    - run: npx --yes @devicecloud.dev/eas-workflow@v0 --flows ./.maestro
-      env:
-        DEVICE_CLOUD_API_KEY: ${{ secrets.DEVICE_CLOUD_API_KEY }}
-        EAS_BUILD_URL: ${{ after.build.outputs.build_url }}
+    - id: download
+      uses: eas/download_build
+      with:
+        build_id: ${{ needs.build.outputs.build_id }}
+    - run: |
+        npx --yes @devicecloud.dev/eas-workflow@next \
+          --app-file ${{ steps.download.outputs.artifact_path }} \
+          --flows ./.maestro
 ```

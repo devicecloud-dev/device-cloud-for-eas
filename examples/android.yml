@@ -11,26 +11,27 @@ jobs:
       profile: preview
 
   e2e_android:
-    after: [build_android]
+    needs: [build_android]
     runs_on: linux-medium
+    env:
+      EAS_BUILD_ID: ${{ needs.build_android.outputs.build_id }}
+      EAS_BUILD_PLATFORM: ${{ needs.build_android.outputs.platform }}
+      EAS_APP_VERSION: ${{ needs.build_android.outputs.app_version }}
+      EAS_GH_SHA: ${{ github.sha }}
+      EAS_GH_BRANCH: ${{ github.ref_name }}
     outputs:
       console_url: ${{ steps.dcd.outputs.console_url }}
       status: ${{ steps.dcd.outputs.upload_status }}
+      flow_results: ${{ steps.dcd.outputs.flow_results }}
     steps:
-      - uses: eas/checkout
+      - id: download
+        uses: eas/download_build
+        with:
+          build_id: ${{ needs.build_android.outputs.build_id }}
       - id: dcd
         run: |
-          npx --yes @devicecloud.dev/eas-workflow@v0 \
+          npx --yes @devicecloud.dev/eas-workflow@next \
+            --app-file ${{ steps.download.outputs.artifact_path }} \
             --flows ./.maestro \
             --android-device pixel-7 \
             --android-api-level 34
-        env:
-          DEVICE_CLOUD_API_KEY: ${{ secrets.DEVICE_CLOUD_API_KEY }}
-          EAS_BUILD_URL: ${{ after.build_android.outputs.build_url }}
-          EAS_BUILD_ID: ${{ after.build_android.outputs.build_id }}
-          EAS_BUILD_PLATFORM: ${{ after.build_android.outputs.platform }}
-          EAS_APP_VERSION: ${{ after.build_android.outputs.app_version }}
-          EAS_GH_SHA: ${{ github.sha }}
-          EAS_GH_BRANCH: ${{ github.ref_name }}
-          EAS_GH_PR_NUMBER: ${{ github.event.pull_request.number }}
-          EAS_GH_REPO: ${{ github.repository }}
