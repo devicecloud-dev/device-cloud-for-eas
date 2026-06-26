@@ -132,6 +132,18 @@ const run = async (): Promise<void> => {
       ' '
     )} ${userArgs}`.trim();
 
+    // Forward CI identity so DCD notices can target this EAS integration (e.g.
+    // by version). The CLI reads these env vars; the spawned child inherits
+    // process.env. Provider alone still enables CI-surface notices.
+    process.env.DCD_CI_PROVIDER = 'eas';
+    try {
+      process.env.DCD_CI_WRAPPER_VERSION = (
+        require('../package.json') as { version?: string }
+      ).version;
+    } catch {
+      // best-effort — version is optional
+    }
+
     let testOutput = '';
     let uploadId: string | null = null;
 
