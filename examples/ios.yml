@@ -19,6 +19,7 @@ jobs:
       DCD_EAS_APP_VERSION: ${{ needs.build_ios.outputs.app_version }}
       DCD_GH_SHA: ${{ github.sha }}
       DCD_GH_BRANCH: ${{ github.ref_name }}
+      DCD_CHECK_NAME: iOS
     outputs:
       console_url: ${{ steps.dcd.outputs.console_url }}
       status: ${{ steps.dcd.outputs.upload_status }}

@@ -22,6 +22,11 @@ const metadataMappings: Array<[envVar: string, metadataKey: string]> = [
   ['DCD_GH_PR_URL', 'gh_pr_url'],
   ['DCD_GH_REPO', 'gh_repo'],
   ['DCD_GH_RUN_ID', 'gh_run_id'],
+  // Names the GitHub check this run posts ("DeviceCloud / iOS"). Set it per job
+  // when a commit is tested more than once — GitHub matches required checks by
+  // name, so runs sharing a name share one branch-protection gate, and it
+  // follows whichever finished last. Keep the value fixed for a given job.
+  ['DCD_CHECK_NAME', 'gh_check_name'],
 ];
 
 export function getEnv(): EasEnv {
