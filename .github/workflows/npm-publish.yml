@@ -19,6 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # Mints the OIDC token npm exchanges for publish rights. npm knows this
+      # repo as a trusted publisher, so there is no long-lived NPM_TOKEN to
+      # expire — but without this the job can't prove who it is and the
+      # registry answers 404 on the PUT.
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,10 +54,10 @@ jobs:
           echo "tag_name=v${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Publishing version ${VERSION} under dist-tag '${{ inputs.dist_tag }}'"
 
+      # No NODE_AUTH_TOKEN: a token in the environment takes precedence and
+      # would put us back on the credential that expired.
       - name: Publish to npm
         run: pnpm publish --tag ${{ inputs.dist_tag }} --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create and push git tag
         run: |
