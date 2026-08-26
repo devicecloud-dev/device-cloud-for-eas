@@ -37,6 +37,15 @@ describe('getEnv', () => {
     expect(metadata).toContain('gh_branch=main');
   });
 
+  it('maps DCD_CHECK_NAME so each job posts its own GitHub check', () => {
+    // Two jobs on one commit otherwise post identically named checks, which
+    // branch protection can only hold as a single required entry.
+    vi.stubEnv('DEVICE_CLOUD_API_KEY', 'k');
+    vi.stubEnv('DCD_CHECK_NAME', 'iOS smoke');
+
+    expect(getEnv().metadata).toContain('gh_check_name=iOS smoke');
+  });
+
   it('skips metadata entries whose source env var is unset or empty', () => {
     vi.stubEnv('DEVICE_CLOUD_API_KEY', 'k');
     vi.stubEnv('DCD_EAS_BUILD_ID', 'build-123');
