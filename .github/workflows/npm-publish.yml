@@ -59,9 +59,16 @@ jobs:
       - name: Publish to npm
         run: pnpm publish --tag ${{ inputs.dist_tag }} --no-git-checks --access public
 
+      # Releases are often cut on GitHub first, which already creates the tag.
+      # Don't fail a successful publish just because the tag is there.
       - name: Create and push git tag
         run: |
+          TAG="${{ steps.version.outputs.tag_name }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists on origin - nothing to do."
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ steps.version.outputs.tag_name }}" -m "Release ${{ steps.version.outputs.version }}"
-          git push origin "${{ steps.version.outputs.tag_name }}"
+          git tag -a "${TAG}" -m "Release ${{ steps.version.outputs.version }}"
+          git push origin "${TAG}"
