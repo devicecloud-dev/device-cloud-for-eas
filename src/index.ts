@@ -2,20 +2,9 @@
 import { spawn } from 'child_process';
 import { getEnv } from './methods/env';
 import { setOutput, escapeShellValue } from './methods/output';
+import { evaluateRun, StatusResponse, TestResult } from './methods/status';
 
 const dcdPackageName = '@devicecloud.dev/dcd';
-
-interface TestResult {
-  name: string;
-  status: 'PASSED' | 'FAILED' | 'CANCELLED' | 'PENDING' | 'RUNNING';
-}
-
-interface StatusResponse {
-  status: 'PASSED' | 'FAILED' | 'CANCELLED' | 'PENDING' | 'RUNNING';
-  tests: TestResult[];
-  consoleUrl?: string;
-  appBinaryId?: string;
-}
 
 const executeCommand = (
   command: string,
@@ -183,9 +172,13 @@ const run = async (): Promise<void> => {
     );
 
     if (result) {
+      // Superseded (--cancel-previous), passed, failed or indeterminate: see
+      // evaluateRun for how the status and the exit code combine.
+      const verdict = evaluateRun(result, cloudExitCode);
+
       setOutput('console_url', result.consoleUrl || '');
       setOutput('app_binary_id', result.appBinaryId || '');
-      setOutput('upload_status', result.status || 'PENDING');
+      setOutput('upload_status', verdict.uploadStatus);
 
       const flowResults = (result.tests || []).map((test: TestResult) => ({
         name: test.name,
@@ -193,32 +186,8 @@ const run = async (): Promise<void> => {
       }));
       setOutput('flow_results', JSON.stringify(flowResults));
 
-      // Fail on either signal. The exit code is authoritative for a run that
-      // finished badly; the status call can only add failures the CLI could not
-      // see. A non-terminal status (PENDING/RUNNING) alongside a clean exit is a
-      // racy or degraded status call, not a failure — the CLI watched the run to
-      // completion, so warn rather than fail the job.
-      if (cloudExitCode !== 0) {
-        console.error(
-          `Test run failed (dcd exited ${cloudExitCode}, status ${result.status}). ` +
-            `Check flow results: ${result.consoleUrl}`
-        );
-        process.exit(1);
-      } else if (result.status === 'PASSED') {
-        console.error('Successfully completed test run.');
-        process.exit(0);
-      } else if (result.status === 'FAILED' || result.status === 'CANCELLED') {
-        console.error(
-          `Test run ${result.status}. Check flow results: ${result.consoleUrl}`
-        );
-        process.exit(1);
-      } else {
-        console.error(
-          `dcd reported success but the upload status is ${result.status}. ` +
-            `Treating the run as passed: ${result.consoleUrl}`
-        );
-        process.exit(0);
-      }
+      console.error(verdict.message);
+      process.exit(verdict.exitCode);
     } else {
       setOutput('upload_status', 'ERROR');
       setOutput('flow_results', '[]');
