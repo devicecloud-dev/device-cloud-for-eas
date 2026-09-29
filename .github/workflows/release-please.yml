@@ -1,0 +1,78 @@
+name: Release
+
+# A push to `main` makes release-please open or update a Release PR. Merging
+# that PR creates the vX.Y.Z tag and GitHub Release, whose body is the
+# freshly-rendered changelog section, and the same workflow run chains into the
+# npm publish. (Chained as a job because releases created with GITHUB_TOKEN
+# don't trigger workflows listening on `release: published`.)
+#
+# The published package is built fresh from the tagged commit by
+# npm-publish.yml. The committed dist/ is only a convenience (build-source.yaml
+# keeps it current on main); consumers install from npm.
+#
+# npm trusted publishing checks the filename of the workflow that started the
+# run. For the chained publish that is this file, so the trusted-publisher entry
+# on npmjs.com must name release-please.yml. See npm-publish.yml's header.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Serialise runs so two of them never race to create or publish one release.
+# A running release is never cancelled.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  release-please:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    # Empty until the automation GitHub App secrets are configured (the same
+    # App as dcd-cli's release-please). We use an App token (not GITHUB_TOKEN)
+    # so the Release PR triggers CI and the PR-title check. PRs opened by
+    # GITHUB_TOKEN do not. Falls back to GITHUB_TOKEN until the App is set up,
+    # so this is safe to merge before then.
+    env:
+      BOT_APP_ID: ${{ secrets.BOT_APP_ID }}
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        if: env.BOT_APP_ID != ''
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish-npm:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    # Must be granted here too: a reusable workflow can never hold a permission
+    # its caller does not, and this workflow's top-level block grants none.
+    # Without id-token: write, npm-publish's own grant is silently dropped and
+    # the trusted-publishing OIDC exchange can't happen. contents: write is for
+    # its "create tag if missing" step, a no-op here since release-please has
+    # already created the tag.
+    permissions:
+      contents: write
+      id-token: write
+    uses: ./.github/workflows/npm-publish.yml
+    with:
+      dist_tag: latest
+      # Build exactly the tagged release commit, not this run's github.sha.
+      ref: ${{ needs.release-please.outputs.tag_name }}

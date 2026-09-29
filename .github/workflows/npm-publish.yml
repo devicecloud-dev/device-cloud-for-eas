@@ -1,6 +1,30 @@
 name: Publish to npm
 
+# Two ways in:
+#   - workflow_call from release-please.yml, after a Release PR merges. This is
+#     how `latest` normally ships: the caller passes the new release tag as
+#     `ref`, so the package is built from exactly the tagged commit.
+#   - workflow_dispatch, by hand: `next` / `beta`, or re-running a `latest`
+#     publish that failed after its GitHub Release was already created.
+#
+# npm trusted publishing checks the filename of the workflow that STARTED the
+# run, not this file's. The chained path runs as release-please.yml, so the
+# trusted-publisher entry for @devicecloud.dev/eas-workflow on npmjs.com must
+# name release-please.yml. A direct dispatch of this file runs as
+# npm-publish.yml and needs its own entry, or npm rejects the publish with a
+# bare E404 on the PUT.
 on:
+  workflow_call:
+    inputs:
+      dist_tag:
+        description: 'npm dist-tag to publish under'
+        required: false
+        default: 'latest'
+        type: string
+      ref:
+        description: 'Git ref to build and publish (the release tag)'
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       dist_tag:
@@ -17,6 +41,8 @@ jobs:
   publish:
     name: Publish
     runs-on: ubuntu-latest
+    # Called from release-please.yml, these are capped by what the caller's
+    # job grants, so its publish-npm job must grant both as well.
     permissions:
       contents: write
       # Mints the OIDC token npm exchanges for publish rights. npm knows this
@@ -25,9 +51,15 @@ jobs:
       # registry answers 404 on the PUT.
       id-token: write
     steps:
+      # `inputs.ref` is only set by workflow_call. Without it (a dispatch)
+      # checkout uses the ref the run was started on. When called, the caller's
+      # github.sha is the push that created the release, which is not always
+      # the release commit (e.g. a re-run from workflow_dispatch on a later
+      # main), so the caller passes the tag.
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.ref }}
           fetch-depth: 0
 
       - name: Setup pnpm
@@ -59,8 +91,9 @@ jobs:
       - name: Publish to npm
         run: pnpm publish --tag ${{ inputs.dist_tag }} --no-git-checks --access public
 
-      # Releases are often cut on GitHub first, which already creates the tag.
-      # Don't fail a successful publish just because the tag is there.
+      # Releases are cut on GitHub first (release-please creates the tag
+      # before calling this workflow), so the tag is usually already there.
+      # Don't fail a successful publish just because it is.
       - name: Create and push git tag
         run: |
           TAG="${{ steps.version.outputs.tag_name }}"

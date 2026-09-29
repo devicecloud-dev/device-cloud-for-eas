@@ -106,3 +106,13 @@ e2e:
           --app-file ${{ steps.download.outputs.artifact_path }} \
           --flows ./.maestro
 ```
+
+## Releasing
+
+Releases are cut by [release-please](https://github.com/googleapis/release-please).
+
+1. PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `deps:`, ...). The `PR Title` check enforces this. PRs are squash-merged, so the title becomes the commit that release-please reads. `feat` cuts a minor release; `fix`, `perf`, `deps`, `revert` and `refactor` cut a patch; `docs`, `chore`, `test`, `ci`, `build` and `style` cut nothing. A breaking change (`feat!:`) cuts a new major, which `@v1` users don't get.
+2. release-please keeps a `chore(main): release X.Y.Z` PR open that bumps `package.json` and `CHANGELOG.md`.
+3. Merging it creates the `vX.Y.Z` tag and GitHub Release, then publishes that tag to npm under `latest` (built fresh, via trusted publishing with provenance). `@v1` users get it on their next run.
+
+For a `next` or `beta` build, run the **Publish to npm** workflow by hand and pick the dist-tag. Never move or delete a release tag.
