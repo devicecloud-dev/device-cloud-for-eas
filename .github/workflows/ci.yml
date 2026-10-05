@@ -27,3 +27,9 @@ jobs:
 
       - name: Run unit tests
         run: pnpm test
+
+      # Dependabot PRs only run this workflow, so the build has to be checked
+      # here too. Without it the TypeScript 7 bump merged green and only broke
+      # in Build Source on main.
+      - name: Build dist
+        run: pnpm build
