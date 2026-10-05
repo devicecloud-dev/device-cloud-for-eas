@@ -24,7 +24,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@types/node": "^25.4.0",
+    "@types/node": "^26.6.4",
     "@vercel/ncc": "^0.45.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"
