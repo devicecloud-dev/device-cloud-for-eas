@@ -17,7 +17,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      PUSH_APP_ID: ${{ secrets.PUSH_APP_ID }}
     steps:
+      - name: Mint push token
+        # devicecloud-push-bot (contents: write only) is a bypass actor on this repo's
+        # rulesets, so it can push to the protected branch; GitHub Actions can't be one.
+        # Falls back to GITHUB_TOKEN while PUSH_APP_ID / PUSH_APP_PRIVATE_KEY are unset.
+        id: push-token
+        if: env.PUSH_APP_ID != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.PUSH_APP_ID }}
+          private-key: ${{ secrets.PUSH_APP_PRIVATE_KEY }}
+          permission-contents: write
+
       - name: Checkout Repository
         uses: actions/checkout@v7
         with:
@@ -46,10 +60,12 @@ jobs:
         continue-on-error: true
         run: |
           git add dist/index.js -f
-          git commit -m "[CI] Add changes"
+          # [skip ci]: app-token pushes start workflows (GITHUB_TOKEN pushes
+          # never did). This keeps it that way.
+          git commit -m "[CI] Add changes" -m "[skip ci]"
 
       - name: Push changes
         uses: ad-m/github-push-action@v1.3.0
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ steps.push-token.outputs.token || secrets.GITHUB_TOKEN }}
           branch: main
