@@ -35,5 +35,5 @@ jobs:
           npx --yes @devicecloud.dev/eas-workflow@v1 \
             --app-file ${{ steps.download.outputs.artifact_path }} \
             --flows ./.maestro \
-            --android-device pixel-7 \
+            --android-device pixel-8 \
             --android-api-level 34
