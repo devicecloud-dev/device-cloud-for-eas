@@ -12,6 +12,25 @@ describe('getEnv', () => {
     expect(() => getEnv()).toThrow(/DEVICE_CLOUD_API_KEY is not set/);
   });
 
+  it('points to an EAS environment variable, not a GitHub Actions secret', () => {
+    // EAS Workflows have no secrets context, so a step env: block reading
+    // ${{ secrets.X }} can't supply the key.
+    vi.stubEnv('DEVICE_CLOUD_API_KEY', '');
+    let message = '';
+    try {
+      getEnv();
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain(
+      'eas env:create --scope project --environment production'
+    );
+    expect(message).toContain(
+      '--name DEVICE_CLOUD_API_KEY --visibility secret'
+    );
+    expect(message).not.toMatch(/env:` block/);
+  });
+
   it('returns the api key and an empty metadata list when no DCD_* vars are set', () => {
     vi.stubEnv('DEVICE_CLOUD_API_KEY', 'secret-key');
     const env = getEnv();
