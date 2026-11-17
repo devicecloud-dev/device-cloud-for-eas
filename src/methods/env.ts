@@ -32,9 +32,18 @@ const metadataMappings: Array<[envVar: string, metadataKey: string]> = [
 export function getEnv(): EasEnv {
   const apiKey = process.env.DEVICE_CLOUD_API_KEY;
   if (!apiKey) {
+    // EAS Workflows have no secrets context: a job gets the EAS environment
+    // variables of the environment it runs in (its `environment:`).
     throw new Error(
-      'DEVICE_CLOUD_API_KEY is not set. Pass it via the step `env:` block: ' +
-        'DEVICE_CLOUD_API_KEY: ${{ secrets.DEVICE_CLOUD_API_KEY }}'
+      'DEVICE_CLOUD_API_KEY is not set. Store your DeviceCloud API key as an ' +
+        'EAS environment variable with secret visibility, in the environment ' +
+        'the job runs in (its `environment:`, production by default), and ' +
+        'EAS sets it for every step. For example: eas env:create --scope ' +
+        'project --environment production --environment preview ' +
+        '--environment development --name DEVICE_CLOUD_API_KEY ' +
+        '--visibility secret --type string --value <your-api-key>. ' +
+        "Don't use ${{ secrets.DEVICE_CLOUD_API_KEY }}: EAS Workflows " +
+        "don't support it."
     );
   }
 
